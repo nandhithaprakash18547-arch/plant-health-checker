@@ -1,0 +1,103 @@
+:root {
+  --green: #2f6f4f;
+  --green-light: #eaf5ee;
+  --stress: #c97a2b;
+  --stress-light: #fbeee0;
+  --bg: #f7f9f7;
+  --text: #223;
+  --card: #ffffff;
+  --border: #e0e5e0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app { max-width: 520px; margin: 0 auto; padding: 24px 16px 60px; }
+
+header h1 { margin: 0 0 4px; font-size: 1.6rem; }
+.tagline { margin: 0 0 24px; color: #667; font-size: 0.9rem; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card h2 { margin-top: 0; font-size: 1.1rem; }
+
+.upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 28px 12px;
+  text-align: center;
+  color: #789;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+#preview { width: 100%; border-radius: 10px; margin-bottom: 12px; }
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--green);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+button:disabled { background: #aebdae; cursor: not-allowed; }
+
+.result { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.result h3 { margin: 0 0 4px; }
+.result p { margin: 0 0 14px; color: #556; font-size: 0.9rem; }
+
+.bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+.bar-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: #556; }
+.bar { background: #eee; border-radius: 6px; height: 10px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
+.bar-fill.green { background: var(--green); }
+.bar-fill.stress { background: var(--stress); }
+
+#reminderForm { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+#reminderForm input, #reminderForm select {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+#reminderList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+#reminderList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--green-light);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+#reminderList li.due { background: var(--stress-light); color: var(--stress); font-weight: 600; }
+#reminderList button.remove {
+  width: auto;
+  background: transparent;
+  color: #99a;
+  font-size: 1.1rem;
+  padding: 0 4px;
+}
+
+footer { text-align: center; color: #99a; font-size: 0.78rem; margin-top: 30px; }

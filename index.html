@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plant Health Checker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🌿 Plant Health Checker</h1>
+      <p class="tagline">Photo-based stress detection so your plants don't wilt silently.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>1. Check a Leaf</h2>
+        <label class="upload-box" for="photoInput">
+          <span id="uploadLabel">Tap to upload or take a photo</span>
+          <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+        </label>
+        <canvas id="canvas" hidden></canvas>
+        <img id="preview" alt="Leaf preview" hidden>
+        <button id="analyzeBtn" disabled>Analyze Leaf</button>
+
+        <div id="result" class="result" hidden>
+          <h3 id="resultTitle"></h3>
+          <p id="resultDetail"></p>
+          <div class="bar-wrap">
+            <div class="bar-label"><span>Green (healthy)</span><span id="greenPct"></span></div>
+            <div class="bar"><div id="greenBar" class="bar-fill green"></div></div>
+            <div class="bar-label"><span>Yellow/Brown (stress)</span><span id="stressPct"></span></div>
+            <div class="bar"><div id="stressBar" class="bar-fill stress"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Watering Reminders</h2>
+        <form id="reminderForm">
+          <input type="text" id="plantName" placeholder="Plant name (e.g. Tulasi, front yard)" required>
+          <select id="frequency">
+            <option value="1">Every day</option>
+            <option value="2" selected>Every 2 days</option>
+            <option value="3">Every 3 days</option>
+            <option value="7">Weekly</option>
+          </select>
+          <button type="submit">Add Reminder</button>
+        </form>
+        <ul id="reminderList"></ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built for AI Immersion / Project Better Tomorrow — Batch C29</p>
+    </footer>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
