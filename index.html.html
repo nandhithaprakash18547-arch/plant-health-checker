@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plant Health Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F6EF; --card:#FFFFFF; --ink:#1F2A1F; --muted:#5E6B5E;
+  --leaf:#2F6B3A; --leaf-dark:#1F4B28; --yellow:#C99A12; --brown:#8A4B2A; --line:#D9DDCF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,sans-serif;line-height:1.5}
+.top{background:var(--leaf-dark);color:#F3F7EA;padding:2rem 1.25rem 1.5rem}
+.top h1{margin:0 0 .4rem;font-size:clamp(1.8rem,5vw,2.6rem);font-weight:800}
+.top p{margin:.2rem 0;max-width:60ch}
+.ai-status{font-size:.85rem;opacity:.85}
+main{max-width:760px;margin:0 auto;padding:1rem;display:grid;gap:1rem}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem}
+.panel h2{margin:0 0 .7rem;font-size:1.15rem}
+.small{font-size:.88rem;color:var(--muted)}
+.drop{display:block;border:2px dashed var(--leaf);border-radius:10px;padding:1.6rem;text-align:center;cursor:pointer;color:var(--leaf-dark);font-weight:600}
+.drop:hover,.drop:focus-within{background:#EAF2E4}
+.preview-wrap{margin:.8rem 0;text-align:center}
+.preview-wrap img{max-width:100%;max-height:320px;border-radius:8px}
+.btn{font:inherit;border:1px solid var(--leaf);background:#fff;color:var(--leaf-dark);padding:.55rem .9rem;border-radius:8px;cursor:pointer;font-weight:600}
+.btn:hover{background:#EAF2E4}
+.btn.primary{background:var(--leaf);color:#fff}
+.btn.primary:hover{background:var(--leaf-dark)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.link{border:none;background:none;text-decoration:underline;padding:.3rem 0}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8FC48F;outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0}
+input,select{font:inherit;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;flex:1 1 150px}
+.result{margin-top:1rem;padding:1rem;border-radius:10px;background:#F2F6EC;border:1px solid var(--line)}
+.badge{display:inline-block;padding:.25rem .8rem;border-radius:99px;color:#fff;font-weight:800}
+.badge.healthy{background:var(--leaf)} .badge.yellowing{background:var(--yellow)} .badge.wilted{background:var(--brown)}
+.bars div{display:grid;grid-template-columns:60px 1fr 45px;align-items:center;gap:.5rem;margin:.3rem 0;font-size:.9rem}
+.bars i{display:block;height:10px;border-radius:5px;width:0;transition:width .4s}
+#barGreen{background:var(--leaf)} #barYellow{background:var(--yellow)} #barBrown{background:var(--brown)}
+.plants,.history{list-style:none;padding:0;margin:.5rem 0 0}
+.plants li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem;padding:.7rem 0;border-top:1px solid var(--line)}
+.plants .due{color:var(--brown);font-weight:700}
+.plants .ok{color:var(--leaf)}
+.history li{padding:.4rem 0;border-top:1px solid var(--line);font-size:.92rem}
+footer{text-align:center;color:var(--muted);font-size:.85rem;padding:1.5rem}
+@media (prefers-reduced-motion:reduce){.bars i{transition:none}}
+
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.pick{position:relative;display:inline-block}
+.pick:focus-within{outline:3px solid #8FC48F;outline-offset:2px}
+
+.drop{text-align:left;cursor:default}
+.drop.over{background:#EAF2E4}
+.drop input[type=file]{display:block;width:100%;margin:.3rem 0 .6rem;padding:.5rem}
+.err{background:#8A2B2B;color:#fff;padding:.6rem 1rem;font-weight:600}
+
+</style>
+</head>
+<body>
+<div id="errBanner" class="err" hidden></div>
+<header class="top">
+  <h1>Plant Health Checker</h1>
+  <p>Take a photo of a leaf. The app tells you if the plant is healthy, yellowing or wilted, and reminds you to water.</p>
+  <p id="aiStatus" class="ai-status">Loading AI model…</p>
+</header>
+
+<main>
+  <section class="panel" id="checker">
+    <h2>1. Check a leaf</h2>
+    <div id="dropZone" class="drop">
+      <p><b>Choose a leaf photo</b> (JPG or PNG)</p>
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+      <p class="small">You can also drag and drop a photo here.</p>
+      <p><b>On phone:</b> take a photo with the camera</p>
+      <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    </div>
+    <p id="fileName" class="small"></p>
+    <div id="previewWrap" class="preview-wrap" hidden>
+      <img id="preview" alt="Selected leaf">
+    </div>
+    <button id="analyzeBtn" class="btn primary" disabled>Check health</button>
+
+    <div id="result" class="result" hidden>
+      <div id="badge" class="badge"></div>
+      <p id="resultText"></p>
+      <div class="bars">
+        <div><span>Green</span><i id="barGreen"></i><b id="pGreen"></b></div>
+        <div><span>Yellow</span><i id="barYellow"></i><b id="pYellow"></b></div>
+        <div><span>Brown</span><i id="barBrown"></i><b id="pBrown"></b></div>
+      </div>
+      <p id="aiLine" class="small"></p>
+    </div>
+  </section>
+
+  <section class="panel" id="teach">
+    <h2>2. Teach the AI with your own plants</h2>
+    <p class="small">Choose a photo above, then label it. After at least 2 labels with a few photos each, the AI uses your examples (transfer learning on MobileNet + KNN).</p>
+    <div class="row">
+      <button class="btn" data-label="healthy">Add as Healthy</button>
+      <button class="btn" data-label="yellowing">Add as Yellowing</button>
+      <button class="btn" data-label="wilted">Add as Wilted</button>
+    </div>
+    <p id="trainCounts" class="small">No examples yet.</p>
+    <button id="clearTrain" class="btn link">Clear training data</button>
+  </section>
+
+  <section class="panel" id="reminders">
+    <h2>3. Watering reminders</h2>
+    <form id="plantForm" class="row">
+      <input id="plantName" placeholder="Plant name (e.g. Hibiscus)" required>
+      <select id="plantEvery">
+        <option value="12">Twice a day (every 12 h)</option>
+        <option value="24" selected>Once a day</option>
+        <option value="48">Every 2 days</option>
+        <option value="72">Every 3 days</option>
+        <option value="168">Weekly</option>
+      </select>
+      <button class="btn primary" type="submit">Add plant</button>
+    </form>
+    <button id="notifyBtn" class="btn link">Turn on notifications</button>
+    <ul id="plantList" class="plants"></ul>
+  </section>
+
+  <section class="panel" id="history">
+    <h2>4. Check history</h2>
+    <ul id="historyList" class="history"><li class="small">No checks yet.</li></ul>
+  </section>
+</main>
+
+<pre id="testOut" class="small" hidden></pre>
+<footer>Built for AI Immersion Programme · Project Better Tomorrow</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js"></script>
+<script>
+// Show any error on the page so problems are easy to see
+window.addEventListener('error', (e) => {
+  const b = document.getElementById('errBanner');
+  if (b) { b.hidden = false; b.textContent = 'Error: ' + e.message; }
+});
+/* ===== Plant Health Checker =====
+ * DATA STORAGE (browser localStorage, no server, no API, no database):
+ *   plants   : [{ id, name, everyHours, lastWatered(ms), notifiedFor(ms) }]
+ *   history  : [{ label, source('AI'|'Colour'), time }]   (last 20 checks)
+ *   knnData  : { healthy|yellowing|wilted : [1024 numbers per example, flattened] }
+ * ERROR HANDLING:
+ *   - Non-image / unreadable file  -> alert, app keeps working
+ *   - No leaf pixels found         -> alert asking for a closer photo
+ *   - AI model fails to load       -> falls back to colour analysis
+ *   - localStorage full/blocked    -> save() catches the error
+ *   - Any uncaught error           -> red banner at top of the page
+ * UNIT TESTS: open index.html?test=1 to run runTests() (shown at page bottom)
+ */
+// Part A: colour analysis (always works)
+// Part B: MobileNet + KNN transfer learning trained on the user's own photos
+// Part C: watering reminders (localStorage + browser notifications)
+
+const $ = (id) => document.getElementById(id);
+const LABELS = { healthy: 'Healthy', yellowing: 'Yellowing', wilted: 'Wilted / Dry' };
+const ADVICE = {
+  healthy: 'The leaf looks healthy. Keep your normal watering routine.',
+  yellowing: 'Yellowing can mean too little or too much water, or low light. Check the soil and water if it is dry.',
+  wilted: 'The leaf looks dry or wilted. Water the plant now and keep it out of harsh afternoon sun.'
+};
+
+let mobilenetModel = null;
+let knn = null;
+
+// ---------- Storage helpers ----------
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn('Storage full', e); } };
+
+// ---------- AI model init ----------
+async function initAI() {
+  try {
+    mobilenetModel = await mobilenet.load({ version: 2, alpha: 1.0 });
+    knn = knnClassifier.create();
+    restoreTraining();
+    $('aiStatus').textContent = 'AI model ready (MobileNet).';
+  } catch (e) {
+    console.error(e);
+    $('aiStatus').textContent = 'AI model could not load (check internet). Using colour analysis only.';
+  }
+  updateCounts();
+}
+
+// ---------- Image selection ----------
+const img = $('preview');
+function showImage(file) {
+  if (!file) return;
+  $('fileName').textContent = 'Selected: ' + file.name;
+  // enable the button straight away, do not wait for the image to load
+  $('analyzeBtn').disabled = false;
+  $('result').hidden = true;
+  const showPreview = (src) => {
+    img.onload = () => { $('previewWrap').hidden = false; };
+    img.onerror = () => { $('fileName').textContent = 'This photo could not be shown. Try a JPG or PNG photo.'; };
+    img.src = src;
+  };
+  try {
+    showPreview(URL.createObjectURL(file));
+  } catch (err) {
+    const reader = new FileReader();
+    reader.onload = () => showPreview(reader.result);
+    reader.readAsDataURL(file);
+  }
+}
+function handleFile(e) {
+  showImage(e.target.files[0]);
+}
+$('fileInput').addEventListener('change', handleFile);
+$('cameraInput').addEventListener('change', handleFile);
+
+// drag and drop
+const dz = $('dropZone');
+['dragover', 'dragenter'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', (e) => showImage(e.dataTransfer.files[0]));
+
+// ---------- Colour analysis ----------
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return { h, s: max ? d / max : 0, v: max };
+}
+
+function colourAnalysis(image) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 100;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0, 100, 100);
+  const data = ctx.getImageData(0, 0, 100, 100).data;
+  let green = 0, yellow = 0, brown = 0, total = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const { h, s, v } = rgbToHsv(data[i], data[i + 1], data[i + 2]);
+    if (s < 0.2 || v < 0.15) continue;          // skip grey/white/black background
+    if (h >= 75 && h <= 170) { green++; total++; }
+    else if (h >= 38 && h < 75) { yellow++; total++; }
+    else if (h >= 8 && h < 38) { brown++; total++; }
+  }
+  if (!total) return { green: 0, yellow: 0, brown: 0, label: null };
+  const g = green / total, y = yellow / total, b = brown / total;
+  let label = 'healthy';
+  if (b + y > 0.55 && b > 0.2) label = 'wilted';
+  else if (y > 0.22 || b > 0.15) label = 'yellowing';
+  return { green: g, yellow: y, brown: b, label };
+}
+
+// ---------- KNN prediction ----------
+async function aiPredict(image) {
+  if (!mobilenetModel || !knn || knn.getNumClasses() < 2) return null;
+  const emb = mobilenetModel.infer(image, true);
+  try {
+    const res = await knn.predictClass(emb, 5);
+    return { label: res.label, confidence: res.confidences[res.label] };
+  } finally { emb.dispose(); }
+}
+
+// ---------- Analyze ----------
+$('analyzeBtn').addEventListener('click', async () => {
+  try { await img.decode(); } catch (e) { alert('Photo is still loading or not supported. Please try a JPG or PNG photo.'); return; }
+  const col = colourAnalysis(img);
+  if (!col.label) {
+    alert('No leaf detected. Take a close photo of a leaf in good light.');
+    return;
+  }
+  const ai = await aiPredict(img);
+  const finalLabel = ai && ai.confidence >= 0.6 ? ai.label : col.label;
+
+  $('result').hidden = false;
+  $('badge').textContent = LABELS[finalLabel];
+  $('badge').className = 'badge ' + finalLabel;
+  $('resultText').textContent = ADVICE[finalLabel];
+  for (const [k, id] of [['green', 'Green'], ['yellow', 'Yellow'], ['brown', 'Brown']]) {
+    const pct = Math.round(col[k] * 100);
+    $('bar' + id).style.width = pct + '%';
+    $('p' + id).textContent = pct + '%';
+  }
+  $('aiLine').textContent = ai
+    ? `AI (trained on your photos): ${LABELS[ai.label]}, ${Math.round(ai.confidence * 100)}% confidence. Colour check: ${LABELS[col.label]}.`
+    : 'Result from colour analysis. Add labelled photos in step 2 to enable the trained AI.';
+
+  addHistory(finalLabel, ai ? 'AI' : 'Colour');
+});
+
+// ---------- Training ----------
+document.querySelectorAll('[data-label]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (!mobilenetModel) return alert('AI model is not loaded yet. Check your internet connection.');
+    if ($('previewWrap').hidden) return alert('Choose a leaf photo first.');
+    const emb = mobilenetModel.infer(img, true);
+    knn.addExample(emb, btn.dataset.label);
+    emb.dispose();
+    persistTraining();
+    updateCounts();
+  });
+});
+
+function persistTraining() {
+  const ds = knn.getClassifierDataset();
+  const out = {};
+  for (const k of Object.keys(ds)) out[k] = Array.from(ds[k].dataSync());
+  save('knnData', out);
+}
+function restoreTraining() {
+  const data = load('knnData', null);
+  if (!data) return;
+  const ds = {};
+  for (const k of Object.keys(data)) ds[k] = tf.tensor2d(data[k], [data[k].length / 1024, 1024]);
+  knn.setClassifierDataset(ds);
+}
+function updateCounts() {
+  if (!knn) { $('trainCounts').textContent = 'AI not loaded.'; return; }
+  const counts = knn.getClassExampleCount();
+  const parts = Object.keys(counts).map((k) => `${LABELS[k]}: ${counts[k]}`);
+  $('trainCounts').textContent = parts.length ? 'Examples: ' + parts.join(', ') : 'No examples yet.';
+}
+$('clearTrain').addEventListener('click', () => {
+  if (knn) knn.clearAllClasses();
+  localStorage.removeItem('knnData');
+  updateCounts();
+});
+
+// ---------- History ----------
+function addHistory(label, source) {
+  const h = load('history', []);
+  h.unshift({ label, source, time: new Date().toLocaleString() });
+  save('history', h.slice(0, 20));
+  renderHistory();
+}
+function renderHistory() {
+  const h = load('history', []);
+  $('historyList').innerHTML = h.length
+    ? h.map((x) => `<li>${x.time}: <b>${LABELS[x.label]}</b> (${x.source})</li>`).join('')
+    : '<li class="small">No checks yet.</li>';
+}
+
+// ---------- Watering reminders ----------
+let plants = load('plants', []);
+
+$('plantForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  plants.push({
+    id: Date.now(),
+    name: $('plantName').value.trim(),
+    everyHours: Number($('plantEvery').value),
+    lastWatered: Date.now(),
+    notifiedFor: 0
+  });
+  save('plants', plants);
+  $('plantName').value = '';
+  renderPlants();
+});
+
+function dueIn(p) { return p.lastWatered + p.everyHours * 3600000 - Date.now(); }
+function fmt(ms) {
+  const m = Math.round(Math.abs(ms) / 60000);
+  return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+}
+
+function renderPlants() {
+  const ul = $('plantList');
+  if (!plants.length) { ul.innerHTML = '<li class="small">Add your first plant above.</li>'; return; }
+  ul.innerHTML = plants.map((p) => {
+    const d = dueIn(p);
+    const status = d <= 0 ? `<span class="due">Water now (overdue by ${fmt(d)})</span>` : `<span class="ok">Next watering in ${fmt(d)}</span>`;
+    return `<li><div><b>${p.name}</b><br>${status}</div>
+      <div><button class="btn primary" data-water="${p.id}">Watered</button>
+      <button class="btn link" data-del="${p.id}">Remove</button></div></li>`;
+  }).join('');
+}
+
+$('plantList').addEventListener('click', (e) => {
+  const w = e.target.dataset.water, d = e.target.dataset.del;
+  if (w) { const p = plants.find((x) => x.id == w); p.lastWatered = Date.now(); p.notifiedFor = 0; }
+  if (d) plants = plants.filter((x) => x.id != d);
+  if (w || d) { save('plants', plants); renderPlants(); }
+});
+
+$('notifyBtn').addEventListener('click', async () => {
+  if (!('Notification' in window)) return alert('Notifications are not supported in this browser.');
+  const r = await Notification.requestPermission();
+  $('notifyBtn').textContent = r === 'granted' ? 'Notifications are on' : 'Notifications blocked';
+});
+
+function checkDue() {
+  let changed = false;
+  plants.forEach((p) => {
+    const dueAt = p.lastWatered + p.everyHours * 3600000;
+    if (Date.now() >= dueAt && p.notifiedFor !== dueAt) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Time to water ' + p.name, { body: 'Your plant is due for watering.' });
+      }
+      p.notifiedFor = dueAt; changed = true;
+    }
+  });
+  if (changed) save('plants', plants);
+  renderPlants();
+}
+setInterval(checkDue, 30000);
+
+// ---------- Unit tests (open index.html?test=1) ----------
+function solidCanvas(r, g, b) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 50;
+  const x = c.getContext('2d');
+  x.fillStyle = `rgb(${r},${g},${b})`;
+  x.fillRect(0, 0, 50, 50);
+  return c;
+}
+function runTests() {
+  const cases = [
+    ['Green leaf is Healthy',            solidCanvas(40, 140, 50),  'healthy'],
+    ['Yellow leaf is Yellowing',         solidCanvas(210, 180, 30), 'yellowing'],
+    ['Brown leaf is Wilted',             solidCanvas(140, 80, 40),  'wilted'],
+    ['White background has no leaf',     solidCanvas(255, 255, 255), null],
+    ['Black image has no leaf',          solidCanvas(0, 0, 0),       null]
+  ];
+  const lines = cases.map(([name, canvas, expected]) => {
+    const got = colourAnalysis(canvas).label;
+    return (got === expected ? 'PASS  ' : 'FAIL  ') + name + ` (expected ${expected}, got ${got})`;
+  });
+  // rgbToHsv sanity check: pure green has hue 120
+  const hsv = rgbToHsv(0, 255, 0);
+  lines.push((Math.round(hsv.h) === 120 ? 'PASS  ' : 'FAIL  ') + 'rgbToHsv pure green hue = 120');
+  const out = $('testOut');
+  out.hidden = false;
+  out.textContent = 'UNIT TESTS\n' + lines.join('\n');
+  console.log(lines.join('\n'));
+}
+if (location.search.includes('test=1')) runTests();
+
+// ---------- Start ----------
+renderHistory();
+checkDue();
+initAI();
+
+</script>
+</body>
+</html>
